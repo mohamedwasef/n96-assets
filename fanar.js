@@ -35,7 +35,7 @@
     /* شريط فوق الفوتر — عرض كامل (الفوتر ثابت أسفل الشاشة)
        مقصوص للنص: بيظهر منه 50% من ارتفاعه الأصلي (الجزء السفلي) — الصورة الفعلية 1440x86 والمعروض 1440/43 */
     '.page-footer.navbar-fixed-bottom{overflow:visible}',
-    '.n96-footbar{position:absolute;left:0;right:0;bottom:100%;width:100%;aspect-ratio:1440/43;line-height:0;overflow:hidden;pointer-events:none}',
+    '.n96-footbar{position:absolute;left:0;right:0;bottom:100%;width:100%;aspect-ratio:1440/28;line-height:0;overflow:hidden;pointer-events:none}',
     '.n96-footbar img{display:block;position:absolute;left:0;bottom:0;width:100%;height:auto}',
     /* اللوجو في الفوتر على الشمال */
     '.page-footer .container{position:relative}',
