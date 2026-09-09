@@ -51,16 +51,12 @@
     return img;
   }
 
-  // Hides a piece if its asset 404s, instead of leaving a broken-image icon on a live site.
   function hideOnError(container, img) {
     img.addEventListener('error', function () {
       container.style.display = 'none';
     });
   }
 
-  // Same as image()+hideOnError(), but as a CSS background instead of an <img>,
-  // so the piece can be masked/faded. A probe Image() stands in for the missing
-  // 'error' event, since a failed background-image never fires one on `container`.
   function applyBackgroundImage(container, src) {
     container.style.backgroundImage = 'url("' + src + '")';
     var probe = new Image();
@@ -105,27 +101,15 @@
     style.textContent = [
       '.n96, .n96 *{box-sizing:border-box}',
 
-      // In-flow hero banner, inserted right after the header. Full width, height
-      // follows the image's own aspect ratio so it never crops or repeats.
       '.n96-hero{line-height:0;overflow:hidden;background:#7a5a1e}',
       '.n96-hero img{display:block;width:100%;height:auto;aspect-ratio:5760/1964}',
 
-      // In-flow decorative bar under the page title.
       '.n96-title-bar{line-height:0}',
       '.n96-title-bar img{display:block;width:100%;height:auto}',
 
-      // Floating layer: background watermark behind the main content, appended to
-      // <body> and positioned in document coordinates computed from the real
-      // content container's geometry.
       '.n96-bg{position:absolute;z-index:-1;opacity:.32;pointer-events:none}',
       '.n96-bg img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}',
 
-      // Floating layer: bar above the footer + footer logo. The footer itself is
-      // fixed to the viewport, so these are positioned:fixed and kept in sync
-      // with the footer's real on-screen position.
-      // The bar is a CSS background (not an <img>) masked with a right-to-left
-      // fade to transparent, so it reads as a soft background strip instead of
-      // an opaque block overlapping whatever sits above it.
       '.n96-footer-bar{position:fixed;z-index:1031;overflow:hidden;pointer-events:none;' +
         'background-repeat:no-repeat;background-position:left bottom;background-size:100% auto;' +
         '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
@@ -258,9 +242,6 @@
     );
   }
 
-  // If the site's own scroll-to-top button is visible and would collide with our
-  // logo, lift the logo just above it instead of overlapping. Read-only on the
-  // button — we only ever move our own element.
   function avoidScrollTopButton(footerLogo, height) {
     var btn = document.querySelector(SCROLL_TOP_SELECTOR);
     if (!btn) return;
@@ -306,8 +287,6 @@
 
     window.addEventListener('resize', scheduled);
     window.addEventListener('orientationchange', scheduled);
-    // The site's scroll-to-top button usually appears/hides as the user scrolls;
-    // re-check so the footer logo keeps clear of it.
     window.addEventListener('scroll', scheduled, { passive: true });
 
     if (window.ResizeObserver) {
@@ -319,7 +298,6 @@
         });
     }
 
-    // Re-check once assets have loaded, since image aspect ratios shift layout.
     window.addEventListener('load', scheduled);
     setTimeout(positionAll, 300);
   }
