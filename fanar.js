@@ -1,93 +1,371 @@
 /*
- * n96.js — الهوية البصرية لليوم الوطني 96 على بوابة فنار (MOFA Services)
- * يُضاف كملف واحد فقط:  <script src="n96.js" defer></script>
- * أو يُلصق كاملاً في الكونسول. آمن للتكرار: يشيل أي نسخة قديمة قبل ما يضيف.
+ * n96.js
+ * Saudi National Day 96 visual identity overlay for the Fanar portal (MOFA Services).
+ *
+ * Usage: <script src="n96.js" defer></script>
+ * or paste the whole file into the browser console.
+ *
+ * Safe to re-run: any previous instance is removed before a new one is added.
+ *
+ * Non-invasive by design:
+ * - No existing page element's class, style or attribute is ever changed.
+ * - No CSS rule targets a real site selector (.page-header, .page-footer, .container, ...).
+ * - New content is only ever added as new elements. Layout position/size of the
+ *   overlay pieces is computed in JS from real element geometry (read-only),
+ *   never by writing styles onto the real elements themselves.
  */
 (function () {
   'use strict';
-  var B = 'https://cdn.jsdelivr.net/gh/mohamedwasef/n96-assets@main/';
-  var A = {
-    logo:        B + 'n96_logo.svg',                 // 106 x 42
-    slider:      B + 'n96_slider.jpg',               // 5760 x 1964
-    sliderMob:   B + 'n96_slider_mobile.jpg',        // 1720 x 2595
-    newsBg:      B + 'n96_news_bg.svg',              // 1440 x 678
-    underAbout:  B + 'n96_under_about_bar.svg',      // 1440 x 29
-    aboveFooter: B + 'n96_above_footer_bar.svg'      // 1440 x 86
+
+  // ---------------------------------------------------------------------
+  // Config
+  // ---------------------------------------------------------------------
+
+  var ASSET_BASE = 'https://cdn.jsdelivr.net/gh/mohamedwasef/n96-assets@main/';
+  var ASSETS = {
+    logo: ASSET_BASE + 'n96_logo.svg', // 106 x 42
+    slider: ASSET_BASE + 'n96_slider.jpg', // 5760 x 1964
+    sliderMobile: ASSET_BASE + 'n96_slider_mobile.jpg', // 1720 x 2595
+    newsBg: ASSET_BASE + 'n96_news_bg.svg', // 1440 x 678
+    underAbout: ASSET_BASE + 'n96_under_about_bar.svg', // 1440 x 29
+    aboveFooter: ASSET_BASE + 'n96_above_footer_bar.svg' // 1440 x 86
   };
-  /* كل الشرايط والصور جوه نفس الـ container بتاع الصفحة (نفس عرض المحتوى) والارتفاع بيتحسب من نسبة الأصل
-     عشان التصميم ميتقصّش ولا يتكرر (الشرايط كصور img مش background عشان تتقاس صح). */
-  var CSS = [
-    '.n96,.n96 *{box-sizing:border-box}',
-    'html,body{overflow-x:hidden}',
-    /* السلايدر — بعرض الـ container، ارتفاع طبيعي حسب نسبة الصورة */
-    '.n96-wrap{line-height:0}',
-    '.n96-hero{position:relative;width:100%;line-height:0;background:#7a5a1e;overflow:hidden}',
-    '.n96-hero picture,.n96-hero img{display:block;width:100%;height:auto}',
-    '.n96-hero img{aspect-ratio:5760/1964}',
-    /* شريط زخرفي تحت عنوان الصفحة — جوه الـ container */
-    '.n96-bar{display:block;width:100%;line-height:0}',
-    '.n96-bar img{display:block;width:100%;height:auto}',
-    /* خلفية زخرفية خفيفة ورا المحتوى */
-    '.page-content>.container{position:relative;min-height:55vh}',
-    '.page-content>.container::before{content:"";display:block;position:absolute;left:15px;right:15px;top:0;bottom:0;width:auto;height:auto;opacity:.32;pointer-events:none;',
-      'background:url(' + A.newsBg + ') center top/100% auto no-repeat}',
-    '.page-content>.container>*{position:relative;z-index:1}',
-    /* شريط فوق الفوتر — عرض كامل (الفوتر ثابت أسفل الشاشة)
-       مقصوص للنص: بيظهر منه 50% من ارتفاعه الأصلي (الجزء السفلي) — الصورة الفعلية 1440x86 والمعروض 1440/43 */
-    '.page-footer.navbar-fixed-bottom{overflow:visible}',
-    '.n96-footbar{position:absolute;left:0;right:0;bottom:100%;width:100%;aspect-ratio:1440/28;line-height:0;overflow:hidden;pointer-events:none}',
-    '.n96-footbar img{display:block;position:absolute;left:0;bottom:0;width:100%;height:auto}',
-    /* اللوجو في الفوتر على الشمال */
-    '.page-footer .container{position:relative}',
-    '.n96-footlogo{position:absolute;left:0;top:50%;transform:translateY(-50%);height:34px;width:auto;z-index:2}',
-    /* تابلت: ابعد عن زرار الرجوع لأعلى */
-    '@media (max-width:991px){.n96-footlogo{left:60px}}',
-    /* موبايل */
-    '@media (max-width:768px){',
-      '.n96-footlogo{position:static;transform:none;display:block;height:30px;margin:0 auto 8px 0}',
+
+  var MOBILE_MAX_WIDTH = 768;
+  var TABLET_MAX_WIDTH = 991;
+  var FOOTER_BAR_RATIO = 28 / 1440; // visible sliver of the 1440x86 asset, cropped to its bottom edge
+  var FOOTER_LOGO_HEIGHT = 34;
+  var FOOTER_LOGO_HEIGHT_MOBILE = 26;
+
+  // The site's own "scroll to top" button. We never touch it — only read its
+  // position so our footer logo can step out of its way when both are on screen.
+  var SCROLL_TOP_SELECTOR =
+    '.scroll-to-top, .back-to-top, .scrollup, .scroll-top-btn, [class*="scroll-top" i], [class*="backtotop" i]';
+
+  var STYLE_ID = 'n96-style';
+  var INFLOW_ROOT_ID = 'n96-inflow-root'; // marks all in-flow siblings for cleanup
+  var FLOAT_ROOT_ID = 'n96-float-root'; // the single floating layer appended to <body>
+
+  // ---------------------------------------------------------------------
+  // Small helpers
+  // ---------------------------------------------------------------------
+
+  function create(tag, className) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    return node;
+  }
+
+  function image(src, alt) {
+    var img = create('img');
+    img.src = src;
+    img.alt = alt || '';
+    return img;
+  }
+
+  // Hides a piece if its asset 404s, instead of leaving a broken-image icon on a live site.
+  function hideOnError(container, img) {
+    img.addEventListener('error', function () {
+      container.style.display = 'none';
+    });
+  }
+
+  // Same as image()+hideOnError(), but as a CSS background instead of an <img>,
+  // so the piece can be masked/faded. A probe Image() stands in for the missing
+  // 'error' event, since a failed background-image never fires one on `container`.
+  function applyBackgroundImage(container, src) {
+    container.style.backgroundImage = 'url("' + src + '")';
+    var probe = new Image();
+    probe.addEventListener('error', function () {
+      container.style.display = 'none';
+    });
+    probe.src = src;
+  }
+
+  function throttleWithRaf(fn) {
+    var scheduled = false;
+    return function () {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(function () {
+        scheduled = false;
+        fn();
+      });
+    };
+  }
+
+  // ---------------------------------------------------------------------
+  // Cleanup (idempotent re-run)
+  // ---------------------------------------------------------------------
+
+  function removePreviousInstance() {
+    var nodes = document.querySelectorAll(
+      '#' + STYLE_ID + ', #' + INFLOW_ROOT_ID + ', .' + INFLOW_ROOT_ID + ', #' + FLOAT_ROOT_ID
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].parentNode.removeChild(nodes[i]);
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Styles — every rule below is scoped to our own n96-* classes only.
+  // ---------------------------------------------------------------------
+
+  function injectStyles() {
+    var style = create('style');
+    style.id = STYLE_ID;
+    style.textContent = [
+      '.n96, .n96 *{box-sizing:border-box}',
+
+      // In-flow hero banner, inserted right after the header. Full width, height
+      // follows the image's own aspect ratio so it never crops or repeats.
+      '.n96-hero{line-height:0;overflow:hidden;background:#7a5a1e}',
+      '.n96-hero img{display:block;width:100%;height:auto;aspect-ratio:5760/1964}',
+
+      // In-flow decorative bar under the page title.
+      '.n96-title-bar{line-height:0}',
+      '.n96-title-bar img{display:block;width:100%;height:auto}',
+
+      // Floating layer: background watermark behind the main content, appended to
+      // <body> and positioned in document coordinates computed from the real
+      // content container's geometry.
+      '.n96-bg{position:absolute;z-index:-1;opacity:.32;pointer-events:none}',
+      '.n96-bg img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}',
+
+      // Floating layer: bar above the footer + footer logo. The footer itself is
+      // fixed to the viewport, so these are positioned:fixed and kept in sync
+      // with the footer's real on-screen position.
+      // The bar is a CSS background (not an <img>) masked with a right-to-left
+      // fade to transparent, so it reads as a soft background strip instead of
+      // an opaque block overlapping whatever sits above it.
+      '.n96-footer-bar{position:fixed;z-index:1031;overflow:hidden;pointer-events:none;' +
+        'background-repeat:no-repeat;background-position:left bottom;background-size:100% auto;' +
+        '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+        '-webkit-mask-image:linear-gradient(to left,rgba(0,0,0,1) 0%,rgba(0,0,0,0) 100%);' +
+        'mask-image:linear-gradient(to left,rgba(0,0,0,1) 0%,rgba(0,0,0,0) 100%)}',
+      '.n96-footer-logo{position:fixed;z-index:1031;pointer-events:none}',
+      '.n96-footer-logo img{display:block;width:auto;height:100%}',
+
+      // Mobile: keep the hero and title bar cropped to a taller portrait ratio.
+      '@media (max-width:' + MOBILE_MAX_WIDTH + 'px){',
       '.n96-hero img{aspect-ratio:1720/2595}',
-      '.page-content>.container::before{background-size:cover}',
-    '}'
-  ].join('\n');
-  function el(tag, cls, html) {
-    var e = document.createElement(tag);
-    e.className = 'n96 ' + cls;
-    if (html) e.innerHTML = html;
-    return e;
-  }
-  function apply() {
-    /* شيل أي نسخة سابقة */
-    var old = document.querySelectorAll('.n96');
-    for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
-    var style = el('style', 'n96-style');
-    style.textContent = CSS;
+      '}'
+    ].join('\n');
     document.head.appendChild(style);
-    var header    = document.querySelector('.page-header');
-    var pageHead  = document.querySelector('.page-head');
-    var footer    = document.querySelector('.page-footer');
-    if (header) {
-      var hero = el('div', 'n96-hero',
-        '<picture>' +
-          '<source media="(max-width:768px)" srcset="' + A.sliderMob + '">' +
-          '<img src="' + A.slider + '" alt="عزّنا بطبعنا">' +
-        '</picture>');
-      var wrap = el('div', 'n96-wrap container');
-      wrap.appendChild(hero);
-      header.parentNode.insertBefore(wrap, header.nextSibling);
+  }
+
+  // ---------------------------------------------------------------------
+  // In-flow pieces (real siblings — take up real layout space on purpose)
+  // ---------------------------------------------------------------------
+
+  function buildHero(header) {
+    if (!header) return null;
+
+    var wrap = create('div', 'n96 ' + INFLOW_ROOT_ID + ' container');
+    var hero = create('div', 'n96 n96-hero');
+    var picture = document.createElement('picture');
+
+    var mobileSource = document.createElement('source');
+    mobileSource.media = '(max-width:' + MOBILE_MAX_WIDTH + 'px)';
+    mobileSource.srcset = ASSETS.sliderMobile;
+
+    var img = image(ASSETS.slider, 'عزّنا بطبعنا');
+    hideOnError(hero, img);
+
+    picture.appendChild(mobileSource);
+    picture.appendChild(img);
+    hero.appendChild(picture);
+    wrap.appendChild(hero);
+
+    header.parentNode.insertBefore(wrap, header.nextSibling);
+    return hero;
+  }
+
+  function buildTitleBar(pageHead) {
+    if (!pageHead) return null;
+
+    var wrap = create('div', 'n96 ' + INFLOW_ROOT_ID + ' container');
+    var bar = create('div', 'n96 n96-title-bar');
+    var img = image(ASSETS.underAbout);
+    hideOnError(bar, img);
+
+    bar.appendChild(img);
+    wrap.appendChild(bar);
+
+    pageHead.parentNode.insertBefore(wrap, pageHead.nextSibling);
+    return bar;
+  }
+
+  // ---------------------------------------------------------------------
+  // Floating layer (overlay pieces — never write to real site elements)
+  // ---------------------------------------------------------------------
+
+  function buildFloatingLayer(anchors) {
+    var root = create('div', 'n96');
+    root.id = FLOAT_ROOT_ID;
+
+    var pieces = {};
+
+    if (anchors.contentContainer) {
+      var bg = create('div', 'n96 n96-bg');
+      var bgImg = image(ASSETS.newsBg);
+      hideOnError(bg, bgImg);
+      bg.appendChild(bgImg);
+      root.appendChild(bg);
+      pieces.bg = bg;
     }
-    if (pageHead) {
-      var bar = el('div', 'n96-wrap container', '<div class="n96-bar"><img src="' + A.underAbout + '" alt=""></div>');
-      pageHead.parentNode.insertBefore(bar, pageHead.nextSibling);
+
+    if (anchors.footer) {
+      var footerBar = create('div', 'n96 n96-footer-bar');
+      applyBackgroundImage(footerBar, ASSETS.aboveFooter);
+      root.appendChild(footerBar);
+      pieces.footerBar = footerBar;
     }
-    if (footer) {
-      var fc = footer.querySelector('.container') || footer;
-      var fb = el('div', 'n96-footbar', '<img src="' + A.aboveFooter + '" alt="">');
-      footer.insertBefore(fb, footer.firstChild);
-      var flogo = el('img', 'n96-footlogo');
-      flogo.src = A.logo; flogo.alt = 'اليوم الوطني السعودي 96';
-      fc.insertBefore(flogo, fc.firstChild);
+
+    if (anchors.footerContainer) {
+      var footerLogo = create('div', 'n96 n96-footer-logo');
+      var logoImg = image(ASSETS.logo, 'اليوم الوطني السعودي 96');
+      hideOnError(footerLogo, logoImg);
+      footerLogo.appendChild(logoImg);
+      root.appendChild(footerLogo);
+      pieces.footerLogo = footerLogo;
+    }
+
+    document.body.appendChild(root);
+    return pieces;
+  }
+
+  // ---------------------------------------------------------------------
+  // Positioning engine — reads real element geometry, writes only to our
+  // own floating pieces.
+  // ---------------------------------------------------------------------
+
+  function positionBg(bg, contentContainer) {
+    if (!bg || !contentContainer) return;
+    var r = contentContainer.getBoundingClientRect();
+    var padding = 15; // matches the container's own side padding
+    bg.style.top = r.top + window.scrollY + 'px';
+    bg.style.left = r.left + padding + window.scrollX + 'px';
+    bg.style.width = Math.max(0, r.width - padding * 2) + 'px';
+    bg.style.height = r.height + 'px';
+  }
+
+  function positionFooterBar(footerBar, footer) {
+    if (!footerBar || !footer) return;
+    var r = footer.getBoundingClientRect();
+    var height = r.width * FOOTER_BAR_RATIO;
+    footerBar.style.left = r.left + 'px';
+    footerBar.style.width = r.width + 'px';
+    footerBar.style.height = height + 'px';
+    footerBar.style.top = r.top - height + 'px';
+  }
+
+  function rectsOverlap(a, b, gap) {
+    gap = gap || 0;
+    return !(
+      a.right + gap < b.left ||
+      a.left - gap > b.right ||
+      a.bottom + gap < b.top ||
+      a.top - gap > b.bottom
+    );
+  }
+
+  // If the site's own scroll-to-top button is visible and would collide with our
+  // logo, lift the logo just above it instead of overlapping. Read-only on the
+  // button — we only ever move our own element.
+  function avoidScrollTopButton(footerLogo, height) {
+    var btn = document.querySelector(SCROLL_TOP_SELECTOR);
+    if (!btn) return;
+
+    var btnRect = btn.getBoundingClientRect();
+    var isVisible = btnRect.width > 0 && btnRect.height > 0 && getComputedStyle(btn).visibility !== 'hidden';
+    if (!isVisible) return;
+
+    var logoRect = footerLogo.getBoundingClientRect();
+    var gap = 6;
+    if (rectsOverlap(logoRect, btnRect, gap)) {
+      footerLogo.style.top = btnRect.top - height - gap + 'px';
     }
   }
+
+  function positionFooterLogo(footerLogo, footerContainer) {
+    if (!footerLogo || !footerContainer) return;
+    var r = footerContainer.getBoundingClientRect();
+    var isMobile = window.innerWidth <= MOBILE_MAX_WIDTH;
+    var isTablet = !isMobile && window.innerWidth <= TABLET_MAX_WIDTH;
+    var height = isMobile ? FOOTER_LOGO_HEIGHT_MOBILE : FOOTER_LOGO_HEIGHT;
+    var left = r.left + (isTablet ? 60 : 0); // stay clear of the tablet "scroll to top" button
+
+    footerLogo.style.height = height + 'px';
+    footerLogo.style.left = left + 'px';
+    footerLogo.style.top = r.top + (r.height - height) / 2 + 'px';
+
+    avoidScrollTopButton(footerLogo, height);
+  }
+
+  function createPositionAll(pieces, anchors) {
+    return function positionAll() {
+      positionBg(pieces.bg, anchors.contentContainer);
+      positionFooterBar(pieces.footerBar, anchors.footer);
+      positionFooterLogo(pieces.footerLogo, anchors.footerContainer);
+    };
+  }
+
+  function watchLayout(positionAll, anchors) {
+    positionAll();
+
+    var scheduled = throttleWithRaf(positionAll);
+
+    window.addEventListener('resize', scheduled);
+    window.addEventListener('orientationchange', scheduled);
+    // The site's scroll-to-top button usually appears/hides as the user scrolls;
+    // re-check so the footer logo keeps clear of it.
+    window.addEventListener('scroll', scheduled, { passive: true });
+
+    if (window.ResizeObserver) {
+      var observer = new ResizeObserver(scheduled);
+      [anchors.hero, anchors.titleBar, anchors.contentContainer, anchors.footer, anchors.footerContainer]
+        .filter(Boolean)
+        .forEach(function (el) {
+          observer.observe(el);
+        });
+    }
+
+    // Re-check once assets have loaded, since image aspect ratios shift layout.
+    window.addEventListener('load', scheduled);
+    setTimeout(positionAll, 300);
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+
+  function apply() {
+    removePreviousInstance();
+    injectStyles();
+
+    var header = document.querySelector('.page-header');
+    var pageHead = document.querySelector('.page-head');
+    var footer = document.querySelector('.page-footer');
+    var footerContainer = footer ? footer.querySelector('.container') : null;
+    var contentContainer = document.querySelector('.page-content > .container');
+
+    var hero = buildHero(header);
+    var titleBar = buildTitleBar(pageHead);
+
+    var anchors = {
+      hero: hero,
+      titleBar: titleBar,
+      footer: footer,
+      footerContainer: footerContainer,
+      contentContainer: contentContainer
+    };
+
+    var pieces = buildFloatingLayer(anchors);
+    var positionAll = createPositionAll(pieces, anchors);
+    watchLayout(positionAll, anchors);
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', apply);
   } else {
