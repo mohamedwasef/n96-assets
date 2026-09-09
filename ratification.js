@@ -49,16 +49,12 @@
     return img;
   }
 
-  // Hides a piece if its asset 404s, instead of leaving a broken-image icon on a live site.
   function hideOnError(container, img) {
     img.addEventListener('error', function () {
       container.style.display = 'none';
     });
   }
-
-  // Same as image()+hideOnError(), but as a CSS background instead of an <img>,
-  // so the piece can be masked/faded. A probe Image() stands in for the missing
-  // 'error' event, since a failed background-image never fires one on `container`.
+  
   function applyBackgroundImage(container, src) {
     container.style.backgroundImage = 'url("' + src + '")';
     var probe = new Image();
@@ -103,30 +99,15 @@
     style.textContent = [
       '.n96, .n96 *{box-sizing:border-box}',
 
-      // In-flow hero banner, inserted right after the header. Wrapped in
-      // the site's own `.container` class (same as the title bar below) so
-      // it matches the page's content width instead of spanning the full
-      // viewport edge-to-edge. Height follows the image's own aspect ratio
-      // so it never crops or repeats.
       '.n96-hero{line-height:0;overflow:hidden;background:#7a5a1e}',
       '.n96-hero img{display:block;width:100%;height:auto;aspect-ratio:5760/1964}',
 
-      // In-flow decorative bar under the page title.
       '.n96-title-bar{line-height:0}',
       '.n96-title-bar img{display:block;width:100%;height:auto}',
 
-      // Floating layer: background watermark behind the main content, appended to
-      // <body> and positioned in document coordinates computed from the real
-      // content container's geometry.
       '.n96-bg{position:absolute;z-index:-1;opacity:.32;pointer-events:none}',
       '.n96-bg img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}',
 
-      // Floating layer: bar above the footer + footer logo. The footer itself is
-      // fixed to the viewport, so these are positioned:fixed and kept in sync
-      // with the footer's real on-screen position.
-      // The bar is a CSS background (not an <img>) masked with a right-to-left
-      // fade to transparent, so it reads as a soft background strip instead of
-      // an opaque block overlapping whatever sits above it.
       '.n96-footer-bar{position:fixed;z-index:1031;overflow:hidden;pointer-events:none;' +
         'background-repeat:no-repeat;background-position:left bottom;background-size:100% auto;' +
         '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
@@ -135,7 +116,6 @@
       '.n96-footer-logo{position:fixed;z-index:1031;pointer-events:none}',
       '.n96-footer-logo img{display:block;width:auto;height:100%}',
 
-      // Mobile: keep the hero and title bar cropped to a taller portrait ratio.
       '@media (max-width:' + MOBILE_MAX_WIDTH + 'px){',
       '.n96-hero img{aspect-ratio:1720/2595}',
       '}'
@@ -249,14 +229,6 @@
     footerBar.style.top = r.top - height + 'px';
   }
 
-  // Large screens only. On phones/tablets the footer band is short and the
-  // site's own scroll-to-top button plus the footer's link/copyright text
-  // crowd that same corner (that's what the v2/v3 dodging logic used to
-  // fight); simplest and cleanest is to just not show the badge there.
-  // On desktop it sits at the footer container's left edge (so it lines up
-  // with the page's own content inset), vertically centered on the
-  // footer's own height — not the inner .container's height, which the
-  // site collapses to 0 and would center against the wrong box.
   function positionFooterLogo(footerLogo, footer, footerContainer) {
     if (!footerLogo || !footer || !footerContainer) return;
 
