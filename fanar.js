@@ -3,16 +3,6 @@
  * Saudi National Day 96 visual identity overlay for the Fanar portal (MOFA Services).
  *
  * Usage: <script src="n96.js" defer></script>
- * or paste the whole file into the browser console.
- *
- * Safe to re-run: any previous instance is removed before a new one is added.
- *
- * Non-invasive by design:
- * - No existing page element's class, style or attribute is ever changed.
- * - No CSS rule targets a real site selector (.page-header, .page-footer, .container, ...).
- * - New content is only ever added as new elements. Layout position/size of the
- *   overlay pieces is computed in JS from real element geometry (read-only),
- *   never by writing styles onto the real elements themselves.
  */
 (function () {
   'use strict';
@@ -37,8 +27,6 @@
   var FOOTER_LOGO_HEIGHT = 34;
   var FOOTER_LOGO_HEIGHT_MOBILE = 26;
 
-  // The site's own "scroll to top" button. We never touch it — only read its
-  // position so our footer logo can step out of its way when both are on screen.
   var SCROLL_TOP_SELECTOR =
     '.scroll-to-top, .back-to-top, .scrollup, .scroll-top-btn, [class*="scroll-top" i], [class*="backtotop" i]';
 
