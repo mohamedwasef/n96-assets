@@ -1,6 +1,6 @@
 /*
  * n96.js
- * Saudi National Day 96 visual identity overlay for the Fanar portal (MOFA Services).
+ * Saudi National Day 96 visual identity overlay for the ratification portal (MOFA Services).
  *
  * Usage: <script src="n96.js" defer></script>
  *
